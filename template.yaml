@@ -1,0 +1,28 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: template
+Parameters:
+  ResourceTag:
+    Type: String
+    Description: Tag applied to all resources
+  PipelineBucket:
+    Type: String
+    Description: S3 bucket with pipeline resources
+
+Resources:
+  IoT:
+    Type: AWS::Serverless::Application
+    Properties:
+      Location: SubTemplates/IoT/packaged.yaml
+      Parameters: 
+        ResourceTag: !Ref ResourceTag
+      Tags: 
+        Project: !Ref ResourceTag 
+      TimeoutInMinutes: 8
+
+Outputs:
+  BootstrapCerts:
+    Description: 'Bucket with bootstrap certificates' 
+    Value: !GetAtt IoT.Outputs.BootstrapBucket
+
+

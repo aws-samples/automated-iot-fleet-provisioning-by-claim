@@ -1,0 +1,35 @@
+version: 0.2
+phases:
+  install:
+    runtime-versions:
+      python: 3.7
+  build:
+    commands:
+      - cd SubTemplates
+      - |
+        for template in */; do
+          cd $template
+          lambdaDir=$(pwd)"/Lambdas"
+          echo $lambdaDir
+          if [ -d "$lambdaDir" ]; then
+            cd Lambdas
+            echo $(pwd)
+            for lambda in */; do
+              cd $lambda
+              pip install -r requirements.txt
+              cd ..
+            done
+            cd ..
+          fi
+          sam build
+          sam package --output-template-file packaged.yaml --s3-bucket $PipelineBucket
+          cd ..
+        done
+      - cd ..
+      - sam build
+  post_build:
+    commands:
+      - sam package --output-template-file packaged.yaml --s3-bucket $PipelineBucket
+artifacts:
+  files:
+    - packaged.yaml

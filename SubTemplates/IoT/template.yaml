@@ -1,0 +1,86 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: "Sub template"
+Parameters:
+  ResourceTag:
+    Type: String
+    Description: Tag applied to all resources
+Globals:
+  Function:
+    Timeout: 3
+    Runtime: python3.7
+    Tags:
+      Project: !Ref ResourceTag
+    Environment:
+      Variables:
+        ResourceTag: !Ref ResourceTag
+Resources:
+  BootstrapCerts:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+  FleetProvisioningFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Description: Sets up fleet provisioning
+      CodeUri: Lambdas/provision_device/
+      Handler: app.handler
+      Timeout: 240
+      MemorySize: 3008
+      Environment:
+        Variables:
+          BootstrapCertsBucket: !Ref BootstrapCerts
+          Account: !Ref AWS::AccountId
+          Region: !Ref AWS::Region
+          RegistrationRoleArn: !Sub ${ThingsRegistrationRole.Arn}
+          LambdaHookArn: !Sub ${FleetProvisioningHookFunction.Arn}
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - AdministratorAccess
+  
+  FleetProvisioningCustom:
+    Type: Custom::FleetProvisioning
+    Properties:
+      ServiceToken: !GetAtt FleetProvisioningFunction.Arn  
+  
+  ThingsRegistrationRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub ${ResourceTag}-ThingRegistration
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: iot.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSIoTThingsRegistration
+
+  FleetProvisioningHookFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Description: Lambda hook for provisioning acceptance logic
+      CodeUri: Lambdas/provision_device/
+      Handler: hook.handler
+      Timeout: 10
+      Policies:
+        - AWSLambdaBasicExecutionRole
+  
+  FleetProvisioningHookPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      Principal: iot.amazonaws.com
+      FunctionName: !Ref FleetProvisioningHookFunction
+      SourceAccount: !Ref AWS::AccountId
+
+Outputs:
+  BootstrapBucket:
+    Description: 'Bucket with bootstrap certificates' 
+    Value: !Ref BootstrapCerts
+    Export: 
+      Name: BootstrapBucket 

@@ -1,0 +1,275 @@
+AWSTemplateFormatVersion: 2010-09-09
+Parameters:
+  CodeRepositoryName:
+    Type: String
+    Default: fb-oenoflow-ota
+  CodeRepositoryBranch:
+    Type: String
+    Default: master
+  ResourceTag:
+    Type: String
+    Default: gsp-fb-oenoflow-ota
+  
+
+Resources:
+  CodePipeline:
+    Type: AWS::CodePipeline::Pipeline
+    Properties:
+      Name: !Sub ${ResourceTag}-pipeline
+      RoleArn: !GetAtt PipelineRole.Arn
+      ArtifactStore:
+        Location: !Ref PipelineBucket
+        Type: S3
+      Stages:
+        - Name: Source
+          Actions:
+            - InputArtifacts: []
+              Name: Source
+              ActionTypeId:
+                Category: Source
+                Owner: AWS
+                Version: 1
+                Provider: CodeCommit
+              Configuration:
+                RepositoryName: !Ref CodeRepositoryName
+                BranchName: !Ref CodeRepositoryBranch
+              OutputArtifacts:
+                - Name: CFNSource
+              RunOrder: 1
+        - Name: Build
+          Actions:
+            - Name: PackageTemplate
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Version: 1
+                Provider: CodeBuild
+              Configuration:
+                ProjectName: !Ref CodeBuild
+              InputArtifacts:
+                - Name: CFNSource
+              OutputArtifacts:
+                - Name: CFNBuild
+              RunOrder: 1
+        - Name: Deploy
+          Actions:
+            - Name: CreateChangeSet
+              ActionTypeId:
+                Category: Deploy
+                Owner: AWS
+                Provider: CloudFormation
+                Version: 1
+              Configuration:
+                ActionMode: CHANGE_SET_REPLACE
+                ChangeSetName: pipeline-changeset
+                Capabilities: CAPABILITY_IAM,CAPABILITY_NAMED_IAM,CAPABILITY_AUTO_EXPAND
+                StackName: !Sub ${ResourceTag}
+                RoleArn: !GetAtt PipelineRole.Arn
+                TemplatePath: CFNBuild::packaged.yaml
+                ParameterOverrides: !Sub |
+                  {
+                      "ResourceTag": "${ResourceTag}",
+                      "PipelineBucket" : "${PipelineBucket}"
+                  }
+              InputArtifacts:
+                - Name: CFNBuild
+              RunOrder: 2
+
+            - Name: ExecuteChangeSet
+              ActionTypeId:
+                Category: Deploy
+                Owner: AWS
+                Provider: CloudFormation
+                Version: 1
+              Configuration:
+                ActionMode: CHANGE_SET_EXECUTE
+                ChangeSetName: pipeline-changeset
+                StackName: !Sub ${ResourceTag}
+                Capabilities: CAPABILITY_IAM,CAPABILITY_NAMED_IAM,CAPABILITY_AUTO_EXPAND
+              RunOrder: 3
+
+  CodeBuild:
+    Type: AWS::CodeBuild::Project
+    Properties: 
+      Artifacts:  
+        Type: CODEPIPELINE
+      Description: !Sub "Sam build for ${ResourceTag} Project"
+      Environment: 
+          ComputeType: BUILD_GENERAL1_LARGE
+          EnvironmentVariables: 
+            - Name: PipelineBucket
+              Value: !Ref PipelineBucket
+          Image: aws/codebuild/amazonlinux2-x86_64-standard:1.0
+          ImagePullCredentialsType: CODEBUILD
+          Type: LINUX_CONTAINER
+      Name: !Sub ${ResourceTag}Build
+      ServiceRole: !Sub ${PipelineRole.Arn}
+      Source: 
+        Type: CODEPIPELINE
+
+  PipelineRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: codebuild.amazonaws.com
+            Action: sts:AssumeRole
+          - Effect: Allow
+            Principal:
+              Service: cloudformation.amazonaws.com
+            Action: sts:AssumeRole
+          - Effect: Allow
+            Principal:
+              Service: codepipeline.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AdministratorAccess
+
+  PipelineBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      AccessControl: Private
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+  
+  cleanupBucketOnDelete:
+    DependsOn: cleanupBucketOnDeleteLambda
+    Type: Custom::cleanupbucket
+    Properties:
+      ServiceToken: 
+       Fn::GetAtt: 
+          - "cleanupBucketOnDeleteLambda"
+          - "Arn"
+      BucketName: !Ref PipelineBucket
+
+  cleanupBucketOnDeleteLambda:
+    DependsOn: PipelineBucket
+    Type: "AWS::Lambda::Function"
+    Properties:
+      Code:
+        ZipFile: !Sub |
+          #!/usr/bin/env python
+          # -*- coding: utf-8 -*-
+          import json
+          import boto3
+          from botocore.vendored import requests
+          def empty_delete_buckets(bucket_name):
+              """
+              Empties and deletes the bucket
+              :param bucket_name:
+              :param region:
+              :return:
+              """
+              print "trying to delete the bucket {0}".format(bucket_name)
+              # s3_client = SESSION.client('s3', region_name=region)
+              s3_client = boto3.client('s3')
+              # s3 = SESSION.resource('s3', region_name=region)
+              s3 = boto3.resource('s3')
+              try:
+                  bucket = s3.Bucket(bucket_name).load()
+              except ClientError:
+                  print "bucket {0} does not exist".format(bucket_name)
+                  return
+              # Check if versioning is enabled
+              response = s3_client.get_bucket_versioning(Bucket=bucket_name)
+              status = response.get('Status','')
+              if status == 'Enabled':
+                  response = s3_client.put_bucket_versioning(Bucket=bucket_name,
+                                                             VersioningConfiguration={'Status': 'Suspended'})
+              paginator = s3_client.get_paginator('list_object_versions')
+              page_iterator = paginator.paginate(
+                  Bucket=bucket_name
+              )
+              for page in page_iterator:
+                  print page
+                  if 'DeleteMarkers' in page:
+                      delete_markers = page['DeleteMarkers']
+                      if delete_markers is not None:
+                          for delete_marker in delete_markers:
+                              key = delete_marker['Key']
+                              versionId = delete_marker['VersionId']
+                              s3_client.delete_object(Bucket=bucket_name, Key=key, VersionId=versionId)
+                  if 'Versions' in page and page['Versions'] is not None:
+                      versions = page['Versions']
+                      for version in versions:
+                          print version
+                          key = version['Key']
+                          versionId = version['VersionId']
+                          s3_client.delete_object(Bucket=bucket_name, Key=key, VersionId=versionId)
+              object_paginator = s3_client.get_paginator('list_objects_v2')
+              page_iterator = object_paginator.paginate(
+                  Bucket=bucket_name
+              )
+              for page in page_iterator:
+                  if 'Contents' in page:
+                      for content in page['Contents']:
+                          key = content['Key']
+                          s3_client.delete_object(Bucket=bucket_name, Key=content['Key'])
+              #UNCOMMENT THE LINE BELOW TO MAKE LAMBDA DELETE THE BUCKET.  
+              # THIS WILL CAUSE AN FAILURE SINCE CLOUDFORMATION ALSO TRIES TO DELETE THE BUCKET
+              #s3_client.delete_bucket(Bucket=bucket_name)
+              #print "Successfully deleted the bucket {0}".format(bucket_name)
+              print "Successfully emptied the bucket {0}".format(bucket_name)
+          def lambda_handler(event, context):
+              try:
+                  bucket = event['ResourceProperties']['BucketName']
+                  if event['RequestType'] == 'Delete':
+                      empty_delete_buckets(bucket)
+                      #s3 = boto3.resource('s3')
+                      #bucket.objects.all().delete()
+                      #bucket = s3.Bucket(bucket)
+                      #for obj in bucket.objects.filter():
+                          #s3.Object(bucket.name, obj.key).delete()
+                  sendResponseCfn(event, context, "SUCCESS")
+              except Exception as e:
+                  print(e)
+                  sendResponseCfn(event, context, "FAILED")
+          def sendResponseCfn(event, context, responseStatus):
+              response_body = {'Status': responseStatus,
+                               'Reason': 'Log stream name: ' + context.log_stream_name,
+                               'PhysicalResourceId': context.log_stream_name,
+                               'StackId': event['StackId'],
+                               'RequestId': event['RequestId'],
+                               'LogicalResourceId': event['LogicalResourceId'],
+                               'Data': json.loads("{}")}
+              requests.put(event['ResponseURL'], data=json.dumps(response_body))
+      Description: cleanup Bucket on Delete Lambda Lambda function.
+      Handler: index.lambda_handler
+      Role : !GetAtt cleanupBucketOnDeleteLambdaRole.Arn
+      Runtime: python2.7
+      Timeout: 60
+
+
+  cleanupBucketOnDeleteLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+          Action:
+          - sts:AssumeRole
+      Path: "/"
+      Policies:
+      - PolicyName: !Join [ -, [!Ref 'AWS::StackName', 'cleanupBucketOnDeleteLambdaPolicy'] ]
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - logs:*
+            - s3:*
+            Resource: '*'
+          - Effect: Deny
+            Action:
+            - s3:DeleteBucket
+            Resource: '*'
+

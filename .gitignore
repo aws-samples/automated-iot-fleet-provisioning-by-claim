@@ -1,0 +1,5 @@
+*.msi
+*.zip
+*.exe
+node_modules/
+.idea

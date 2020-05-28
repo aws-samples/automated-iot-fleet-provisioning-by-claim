@@ -24,13 +24,13 @@ These steps only need to be completed once per AWS account.
 3. Use the following command to install infrastructure into your account
 
 ```
-aws CloudFormation create-stack --region PUT-REGION-HERE --stack-name PUT-STACK-NAME-HERE --template-body file://pipeline.yaml --capabilities CAPABILITY_NAMED_IAM --parameters ParameterKey=CodeRepositoryName,ParameterValue=PUT-REPO-NAME-HERE ParameterKey=CodeRepositoryBranch,ParameterValue=PUT-BRANCH-HERE ParameterKey=ResourceTag,ParameterValue=PUT-RESOURCE-TAG-HERE --profile PUT_PROFILE_HERE
+aws cloudFormation create-stack --region PUT-REGION-HERE --stack-name PUT-STACK-NAME-HERE --template-body file://pipeline.yaml --capabilities CAPABILITY_NAMED_IAM --parameters ParameterKey=CodeRepositoryName,ParameterValue=PUT-REPO-NAME-HERE ParameterKey=CodeRepositoryBranch,ParameterValue=PUT-BRANCH-HERE ParameterKey=ResourceTag,ParameterValue=PUT-RESOURCE-TAG-HERE --profile PUT_PROFILE_HERE
 ```
 
 Example
 
 ```
-aws CloudFormation create-stack --region us-east-1 --stack-name pipeline --template-body file://pipeline.yaml --capabilities CAPABILITY_NAMED_IAM --parameters ParameterKey=CodeRepositoryName,ParameterValue=fleet ParameterKey=CodeRepositoryBranch,ParameterValue=master ParameterKey=ResourceTag,ParameterValue=fleetprov --profile default
+aws cloudFormation create-stack --region us-east-1 --stack-name pipeline --template-body file://pipeline.yaml --capabilities CAPABILITY_NAMED_IAM --parameters ParameterKey=CodeRepositoryName,ParameterValue=fleet ParameterKey=CodeRepositoryBranch,ParameterValue=master ParameterKey=ResourceTag,ParameterValue=fleetprov --profile default
 ```
 
 This template will dynamically create an edge client and bootstrap certificates for your account. These resources are uploaded to an Amazon S3 bucket named {ResourceTag}-{rootstackId}-bootstrapcerts-{stackId}. The full name of the S3 bucket as also provided as an output of the root stack.

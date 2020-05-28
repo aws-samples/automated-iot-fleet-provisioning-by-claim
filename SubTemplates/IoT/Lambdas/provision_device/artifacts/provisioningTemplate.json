@@ -22,7 +22,7 @@
         },
         "policy": {
             "Properties": {
-                "PolicyDocument": ""
+                "PolicyName": ""
             },
             "Type": "AWS::IoT::Policy"
         },

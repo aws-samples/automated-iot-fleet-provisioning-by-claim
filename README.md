@@ -220,3 +220,13 @@ Actions:
 The edge client was adapted from https://github.com/aws-samples/aws-iot-fleet-provisioning.
 
 Edge Client: Python application with bootstrap certificates that runs on the edge device. The app establishes mqtt communication and exchanges the bootstrap certificates for the production certificates with elevated privileges.   
+
+
+### Infrastructure Teardown
+Teardown removes all SSM managed instances and IoT things/resources created using the edge client  
+
+1. Delete the CloudFormation root project assets stack {ResourceTag}
+2. Delete the CloudFormation pipeline stack
+3. Delete things created for project
+4. Delete production policy for project
+5. Delete production policy certificate for project

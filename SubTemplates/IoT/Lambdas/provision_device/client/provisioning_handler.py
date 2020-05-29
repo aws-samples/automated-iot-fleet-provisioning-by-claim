@@ -38,10 +38,13 @@ class ProvisioningHandler:
         self.secure_cert_path = self.config_parameters['SECURE_CERT_PATH']
         self.iot_endpoint = self.config_parameters['IOT_ENDPOINT']
         self.template_name = self.config_parameters['PROVISIONING_TEMPLATE_NAME']
-        self.claim_cert = self.config_parameters['CLAIM_CERT']
-        self.secure_key = self.config_parameters['SECURE_KEY']
-        self.root_cert = self.config_parameters['ROOT_CERT']
+        self.claim_cert = self.certFullPath(
+            self.config_parameters['CLAIM_CERT'])
+        self.secure_key = self.certFullPath(
+            self.config_parameters['SECURE_KEY'])
+        self.root_cert = self.certFullPath(self.config_parameters['ROOT_CERT'])
         self.machine_config = self.config_parameters['MACHINE_CONFIG_PATH']
+        self.error = ''
 
         with open(self.machine_config) as json_file:
             data = json.load(json_file)
@@ -59,22 +62,28 @@ class ProvisioningHandler:
         # -- Note: This attribute is passed up as part of the register_thing method and
         # will be validated in your lambda's event data.
         # ------------------------------------------------------------------------------
-        self.hasValidAccount = True
+        if not os.path.exists(self.claim_cert):
+            self.error = '### Bootstrap cert non-existent. Official cert may already be in place.'
+        else:
+            self.hasValidAccount = True
 
-        self.primary_MQTTClient = AWSIoTMQTTClient("fleet_provisioning_demo")
+            self.primary_MQTTClient = AWSIoTMQTTClient(
+                "fleet_provisioning_demo")
 
-        self.primary_MQTTClient.onMessage = self.on_message_callback
-        self.callback_returned = False
-        self.message_payload = {}
+            self.primary_MQTTClient.onMessage = self.on_message_callback
+            self.callback_returned = False
+            self.message_payload = {}
+
+    def certFullPath(self, cert):
+        return "{}/{}".format(self.secure_cert_path, cert)
 
     def core_connect(self):
         """ Method used to connect to connect to AWS IoTCore Service. Endpoint collected from config.
 
         """
         self.primary_MQTTClient.configureEndpoint(self.iot_endpoint, 8883)
-        self.primary_MQTTClient.configureCredentials("{}/{}".format(self.secure_cert_path,
-                                                                    self.root_cert), "{}/{}".format(self.secure_cert_path, self.secure_key),
-                                                     "{}/{}".format(self.secure_cert_path, self.claim_cert))
+        self.primary_MQTTClient.configureCredentials(
+            self.root_cert, self.secure_key, self.claim_cert)
         self.primary_MQTTClient.configureOfflinePublishQueueing(-1)
         self.primary_MQTTClient.configureDrainingFrequency(2)
         self.primary_MQTTClient.configureConnectDisconnectTimeout(10)
@@ -211,9 +220,8 @@ class ProvisioningHandler:
 
         self.test_MQTTClient = AWSIoTMQTTClient(self.serial_num)
         self.test_MQTTClient.configureEndpoint(self.iot_endpoint, 8883)
-        self.test_MQTTClient.configureCredentials("{}/{}".format(self.secure_cert_path,
-                                                                 self.root_cert), "{}/{}".format(self.secure_cert_path, self.new_key_name),
-                                                  "{}/{}".format(self.secure_cert_path, self.new_cert_name))
+        self.test_MQTTClient.configureCredentials(self.root_cert, self.certFullPath(
+            self.new_key_name), self.certFullPath(self.new_cert_name))
         # Infinite offline Publish queueing
         self.test_MQTTClient.configureOfflinePublishQueueing(-1)
         self.test_MQTTClient.configureDrainingFrequency(2)  # Draining: 2 Hz

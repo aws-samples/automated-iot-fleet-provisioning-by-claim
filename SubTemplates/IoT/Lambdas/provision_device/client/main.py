@@ -40,8 +40,10 @@ if __name__ == "__main__":
 
     # Instantiate provisioning handler, pass in path to config
     provisioner = ProvisioningHandler(CONFIG_PATH)
+    print(provisioner.error)
 
     # Call super-method to perform aquisition/activation
     # of certs, creation of thing, etc. Returns general
     # purpose callback at this point.
-    provisioner.get_official_certs(callback)
+    if not provisioner.error:
+        provisioner.get_official_certs(callback)

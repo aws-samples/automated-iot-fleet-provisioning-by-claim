@@ -1,3 +1,6 @@
+<!-- Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved. -->
+<!-- SPDX-License-Identifier: MIT-0 -->
+
 # Automated IoT Fleet Provisioning By Claim using Bootstrap Certificates
 AWS IoT Core Fleet Provisioning provides all necessary tools to securely onboard IoT devices. This process includes establishing a unique identity for each device, registering each device within AWS IoT, and managing the device permissions. The image below is from [how-to-automate-onboarding-of-iot-devices-to-aws-iot-core-at-scale-with-fleet-provisioning](https://aws.amazon.com/blogs/iot/how-to-automate-onboarding-of-iot-devices-to-aws-iot-core-at-scale-with-fleet-provisioning/), which provides a detailed description of fleet provisioning. Provisioning by claim is a popular provisioning method that uses a bootstrap certificate (X.509 certificate and a private key) that can be included on edge devices during the manufacturing process. The edge device first connects to IoT Core using the bootstrap certificate to request production certificates that uniquely identify the device. At this point, the device uses the production certificates for future AWS IoT connections. For the first connection with the production certificates, IoT Core references a provisioning template to assign the correct permissions to the device. At this point, the device has full production permissions during communications with AWS IoT Core.
 
@@ -14,11 +17,11 @@ This repository includes AWS CloudFormation templates that fully automate the pr
 
 ### Cloud Setup
 
-These steps only need to be completed once per AWS account. 
+These steps only need to be completed once per AWS account.
 
 1. Clone this repository to code commit
 2. Install AWS CLI
-3. Use the following command to install infrastructure into your account. If this is not your first time uploading into this account, you must either delete the existing IoT production policy or use a different ResourceTag than the previous deploys or stack creation will fail.
+3. Use the following command to install infrastructure into your account
 
 ```
 aws cloudFormation create-stack --region PUT-REGION-HERE --stack-name PUT-STACK-NAME-HERE --template-body file://pipeline.yaml --capabilities CAPABILITY_NAMED_IAM --parameters ParameterKey=CodeRepositoryName,ParameterValue=PUT-REPO-NAME-HERE ParameterKey=CodeRepositoryBranch,ParameterValue=PUT-BRANCH-HERE ParameterKey=ResourceTag,ParameterValue=PUT-RESOURCE-TAG-HERE --profile PUT_PROFILE_HERE
@@ -206,7 +209,7 @@ Actions:
     - Create edge personalized client for your AWS account
 
 2. DeviceProvisioningHookFunction:  
-Location: SubTemplates\IoT\Lambdas\provision_device\hook.py  
+Location: SubTemplates\IoT\Lambdas\provision_hook\app.py  
 Trigger: Fleet-provisioning client publish to topic  
 Actions:  
     - Logic to approve/deny device certificate requests

@@ -64,8 +64,8 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Description: Lambda hook for provisioning acceptance logic
-      CodeUri: Lambdas/provision_device/
-      Handler: hook.handler
+      CodeUri: Lambdas/provision_hook/
+      Handler: app.handler
       Timeout: 10
       Policies:
         - AWSLambdaBasicExecutionRole

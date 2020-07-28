@@ -19,13 +19,20 @@ bucket = os.environ['BootstrapCertsBucket']
 account = os.environ['Account']
 region = os.environ['Region']
 registrationRoleArn = os.environ['RegistrationRoleArn']
-lambdaHookArn = os.environ['LambdaHookArn']
+prodLambdaHookArn = os.environ['ProdLambdaHookArn']
+rotateLambdaHookArn = os.environ['RotateLambdaHookArn']
 
-bootstrapPolicyName = '{}_birth_template'.format(resourceTag)
-productionPolicyName = '{}_prod_template'.format(resourceTag)
-templateName = '{}_CFN'.format(bootstrapPolicyName)
-templateArn = 'arn:aws:iot:{}:{}:provisioningtemplate/{}'.format(
-    region, account, templateName)
+bootstrapPolicyName = '{}_birth_policy'.format(resourceTag)
+productionPolicyName = '{}_prod_policy'.format(resourceTag)
+
+prodTemplateName = '{}_prod_template_CFN'.format(resourceTag)
+rotateTemplateName = '{}_rotation_template_CFN'.format(resourceTag)
+
+prodTemplateArn = 'arn:aws:iot:{}:{}:provisioningtemplate/{}'.format(
+    region, account, prodTemplateName)
+rotateTemplateArn = 'arn:aws:iot:{}:{}:provisioningtemplate/{}'.format(
+    region, account, rotateTemplateName)
+
 bootstrapPrefix = 'bootstrap'
 rootCertUrl = "https://www.amazontrust.com/repository/AmazonRootCA1.pem"
 certLocation = "certs/bootstrap-certificate.pem.crt"
@@ -76,14 +83,16 @@ def clearBootstrapPolicy():
         s3Delete(bucket, fileobject['Key'])
 
     iotClient.delete_provisioning_template(
-        templateName=templateName
+        templateName=prodTemplateName
+    )
+
+    iotClient.delete_provisioning_template(
+        templateName=rotateTemplateName
     )
     iotClient.delete_policy(
         policyName=bootstrapPolicyName
     )
-    # iotClient.delete_policy(
-    #     policyName=productionPolicyName
-    # )
+   
 
 
 def getIoTEndpoint():
@@ -98,7 +107,8 @@ def updateConfig(fullPath, filename, iotEndpoint):
         data = config.read()
     if filename == 'config.ini':
         data = data.replace('$ENTER_ENDPOINT_HERE', iotEndpoint)
-        data = data.replace('$ENTER_TEMPLATE_HERE', templateName)
+        data = data.replace('$ENTER_TEMPLATE_NAME_HERE', prodTemplateName)
+        data = data.replace('$ENTER_CERT_ROTATION_TEMPLATE_HERE', rotateTemplateName)
     return data
 
 
@@ -126,7 +136,7 @@ def createBootstrapPolicy():
         bootstrapPolicy = bsp.read().replace(
             '$REGION:$ACCOUNT', '{}:{}'.format(region, account))
         bootstrapPolicy = bootstrapPolicy.replace(
-            '$PROVTEMPLATE', templateName)
+            '$PROVTEMPLATE', prodTemplateName)
 
         bootstrapPolicy = json.loads(bootstrapPolicy)
 
@@ -149,6 +159,8 @@ def createProductionPolicy():
     with open('artifacts/productionPolicy.json', 'r') as pp:
         productionPolicy = pp.read().replace(
             '$REGION:$ACCOUNT', '{}:{}'.format(region, account))
+        productionPolicy = productionPolicy.replace(
+            '$PROVTEMPLATE', rotateTemplateName)
         productionPolicy = json.loads(productionPolicy)
 
     iotClient.create_policy(
@@ -163,14 +175,18 @@ def uploadClientToS3(certificates, client):
     s3UploadFileObject(client, 'client.zip')
 
 
-def createTemplateBody():
-    with open('artifacts/provisioningTemplate.json', 'r') as pt:
+def createTemplateBody(filePath):
+    with open(filePath, 'r') as pt:
         provisioningTemplate = json.load(pt)
     provisioningTemplate['Resources']['policy']['Properties']['PolicyName'] = productionPolicyName
+    print(provisioningTemplate)
     return provisioningTemplate
 
 
-def createTemplate(templateBody):
+def createTemplate(templateBody, templateName, lambdaHookArn):
+    print(templateBody)
+    print(templateName)
+    print(lambdaHookArn)
     iotClient.create_provisioning_template(
         templateName=templateName,
         description=resourceTag + ' Provisioning Template',
@@ -182,6 +198,26 @@ def createTemplate(templateBody):
         }
     )
 
+def createModelBootstraps():
+    model_bucket = '{}-per-vendor-bootstraps'.format(resourceTag)
+    
+    with open('artifacts/models.txt', 'r') as rows:
+        s3Client.create_bucket(Bucket=model_bucket)
+        models = rows.read().splitlines()
+        rootCert = urlopen(rootCertUrl)
+        
+        for model in models:
+            #create certificates
+            certificates = iotClient.create_keys_and_certificate(setAsActive=True)
+            iotClient.attach_policy(policyName=bootstrapPolicyName,target=certificates['certificateArn'])
+            mem_zip = BytesIO()
+            
+            with ZipFile(mem_zip, mode="w", compression=ZIP_DEFLATED) as archive:
+                archive.writestr('bootstrap-certificate.pem.crt', certificates['certificatePem'])
+                archive.writestr('bootstrap-private.pem.key', certificates['keyPair']['PrivateKey'])
+                archive.writestr('root.ca.pem', rootCert.read())
+            mem_zip.seek(0)
+            s3Client.upload_fileobj(mem_zip, model_bucket,'{0}/{0}_bootstraps.zip'.format(model))
 
 def handler(event, context):
     responseData = {}
@@ -198,11 +234,17 @@ def handler(event, context):
             print('client created')
             uploadClientToS3(certificates, client)
             print('client uploaded')
-            templateBody = createTemplateBody()
-            createTemplate(templateBody)
-
+            #create provisioning templates
+            prodTemplateBody = createTemplateBody('artifacts/provisioningTemplate.json')
+            createTemplate(prodTemplateBody, prodTemplateName, prodLambdaHookArn)
+            rotateTemplateBody = createTemplateBody('artifacts/certRotationTemplate.json')
+            createTemplate(rotateTemplateBody, rotateTemplateName, rotateLambdaHookArn)
+            createModelBootstraps()
             result = cfnresponse.SUCCESS
         elif event['RequestType'] == 'Update':
+            #create provisioning templates
+            print('UPDATE FIRED!')
+            createModelBootstraps()
             result = cfnresponse.SUCCESS
         else:
             clearBootstrapPolicy()

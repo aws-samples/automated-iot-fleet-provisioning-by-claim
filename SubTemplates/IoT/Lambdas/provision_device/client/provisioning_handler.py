@@ -19,7 +19,8 @@ import json
 import os
 import asyncio
 import glob
-
+import ssl
+import sys
 
 class ProvisioningHandler:
 
@@ -128,7 +129,12 @@ class ProvisioningHandler:
 
     async def orchestrate_provisioning_flow(self,callback):
         # Connect to core with provision claim creds
-        self.core_connect()
+        try:
+            self.core_connect()
+        except ssl.SSLError:
+            print("Duplicate prod certs exist in your cert directory. Remove any certs not associated with device.")
+            sys.exit()
+
 
         # Monitor topics for errors
         self.enable_error_monitor()
@@ -169,6 +175,10 @@ class ProvisioningHandler:
                 print('##### CERT ACTIVATED AND THING {} CREATED #####'.format(json_data['thingName']))
 
             self.validate_certs() 
+        elif 'statusCode' in json_data:
+            if json_data['statusCode'] == 403:
+                os.remove("{}/{}".format(self.secure_cert_path,self.new_key_name))
+                os.remove("{}/{}".format(self.secure_cert_path,self.new_cert_name))
         else:
             self.logger.info(json_data)
 
@@ -226,7 +236,7 @@ class ProvisioningHandler:
                 
 
 
-        register_template = {"certificateOwnershipToken": token, "parameters": {"SerialNumber": serial}}
+        register_template = {"certificateOwnershipToken": token, "parameters": {"clientId": serial}}
         
         #Register thing / activate certificate
         self.primary_MQTTClient.publish("$aws/provisioning-templates/{}/provision/json".format(self.template_name), json.dumps(register_template), 0)
@@ -243,6 +253,7 @@ class ProvisioningHandler:
         print("##### FILES SAVED TO {} #####".format(self.secure_cert_path))
 
     def cert_validation_test(self):
+        self.primary_MQTTClient.disconnectAsync()
         self.test_MQTTClient.configureEndpoint(self.iot_endpoint, 8883)
         self.test_MQTTClient.configureCredentials("{}/{}".format(self.secure_cert_path, 
                                                     self.root_cert), "{}/{}".format(self.secure_cert_path, self.new_key_name), 
@@ -264,7 +275,6 @@ class ProvisioningHandler:
     def new_cert_pub_sub(self):
         """Method testing a call to the 'openworld' topic (which was specified in the policy for the new certificate)
         """
-        self.test_MQTTClient.subscribe("openworld", 1, self.basic_callback)
-        self.test_MQTTClient.publish("openworld", str({"service_response": "##### RESPONSE FROM PREVIOUSLY FORBIDDEN TOPIC #####"}), 0)
+        self.test_MQTTClient.subscribe("cmd/insite360/test/{}".format(self.unique_id), 1, self.basic_callback)
+        self.test_MQTTClient.publish("cmd/insite360/test/{}".format(self.unique_id), str({"service_response": "##### RESPONSE FROM PREVIOUSLY FORBIDDEN TOPIC #####"}), 0)
         
-

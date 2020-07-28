@@ -1,9 +1,12 @@
 {
     "Parameters": {
-      "CertDate": {
+      "DeviceSerial": {
         "Type": "String"
       },
-      "DeviceSerial": {
+      "clientId": {
+        "Type": "String"
+      },
+      "CertDate": {
         "Type": "String"
       },
       "AWS::IoT::Certificate::Id": {
@@ -28,8 +31,8 @@
       },
       "thing": {
         "OverrideSettings": {
-          "AttributePayload": "MERGE",
-          "ThingGroups": "DO_NOTHING",
+          "AttributePayload": "REPLACE",
+          "ThingGroups": "REPLACE",
           "ThingTypeName": "REPLACE"
         },
         "Properties": {
@@ -40,12 +43,10 @@
           },
           "ThingGroups": [],
           "ThingName": {
-            "Ref": "DeviceSerial"
+            "Ref": "clientId"
           }
         },
         "Type": "AWS::IoT::Thing"
       }
-    },
-    "DeviceConfiguration": {
     }
   }

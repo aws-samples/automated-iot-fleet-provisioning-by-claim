@@ -10,7 +10,7 @@ CERT_ROTATION_DAYS = 360
 GRACE_PERIOD = 14
 
 #Thingname will be post-pended
-ALERT_TOPIC = 'admin/alerts'
+ALERT_TOPIC = 'cmd'
 
 #short hand date
 d = date.today()
@@ -33,7 +33,7 @@ def handler(event, context):
   for thing in overdue_things['things']:
     print(thing)
     endpoint.publish(
-      topic='{}/{}'.format(ALERT_TOPIC,thing['thingName']),
+      topic='{}/{}/alerts'.format(ALERT_TOPIC,thing['thingName']),
       payload='{"msg":"rotate_cert"}'
       )
     

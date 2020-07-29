@@ -19,11 +19,7 @@
             "Resource": [
                 "arn:aws:iot:$REGION:$ACCOUNT:topic/$aws/certificates/create/*",
                 "arn:aws:iot:$REGION:$ACCOUNT:topic/$aws/provisioning-templates/$PROVTEMPLATE/provision/*",
-                "arn:aws:iot:$REGION:$ACCOUNT:topic/admin/insite360/${iot:Connection.Thing.ThingName}",
-                "arn:aws:iot:$REGION:$ACCOUNT:topic/dt/insite360/*/*/${iot:Connection.Thing.ThingName}",
-                "arn:aws:iot:$REGION:$ACCOUNT:topic/dt/insite360/*/*/${iot:Connection.Thing.ThingName}/*",
-                "arn:aws:iot:$REGION:$ACCOUNT:topic/cmd/insite360/*/${iot:Connection.Thing.ThingName}",
-                "arn:aws:iot:$REGION:$ACCOUNT:topic/cmd/insite360/*/${iot:Connection.Thing.ThingName}/*"
+                "arn:aws:iot:$REGION:$ACCOUNT:topic/*/${iot:Connection.Thing.ThingName}/*"
                 
             ]
         },
@@ -35,11 +31,9 @@
             "Resource": [
                 "arn:aws:iot:$REGION:$ACCOUNT:topicfilter/$aws/certificates/create/*",
                 "arn:aws:iot:$REGION:$ACCOUNT:topicfilter/$aws/provisioning-templates/$PROVTEMPLATE/provision/*",
-                "arn:aws:iot:$REGION:$ACCOUNT:topicfilter/admin/insite360/${iot:Connection.Thing.ThingName}",
-                "arn:aws:iot:$REGION:$ACCOUNT:topicfilter/dt/insite360/*/*/${iot:Connection.Thing.ThingName}",
-                "arn:aws:iot:$REGION:$ACCOUNT:topicfilter/dt/insite360/*/*/${iot:Connection.Thing.ThingName}/*",
-                "arn:aws:iot:$REGION:$ACCOUNT:topicfilter/cmd/insite360/*/${iot:Connection.Thing.ThingName}",
-                "arn:aws:iot:$REGION:$ACCOUNT:topicfilter/cmd/insite360/*/${iot:Connection.Thing.ThingName}/*"
+                "arn:aws:iot:$REGION:$ACCOUNT:topic/$aws/certificates/create/*",
+                "arn:aws:iot:$REGION:$ACCOUNT:topic/$aws/provisioning-templates/$PROVTEMPLATE/provision/*",
+                "arn:aws:iot:$REGION:$ACCOUNT:topic/*/${iot:Connection.Thing.ThingName}/*"
 
             ]
         }

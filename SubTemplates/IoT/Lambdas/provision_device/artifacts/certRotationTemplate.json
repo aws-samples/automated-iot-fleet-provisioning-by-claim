@@ -1,52 +1,49 @@
 {
-    "Parameters": {
-      "DeviceSerial": {
-        "Type": "String"
-      },
-      "clientId": {
-        "Type": "String"
-      },
-      "CertDate": {
-        "Type": "String"
-      },
-      "AWS::IoT::Certificate::Id": {
-        "Type": "String"
-      }
+  "Parameters": {
+    "DeviceSerial": {
+      "Type": "String"
     },
-    "Resources": {
-      "certificate": {
-        "Properties": {
-          "CertificateId": {
-            "Ref": "AWS::IoT::Certificate::Id"
-          },
-          "Status": "Active"
+    "CertDate": {
+      "Type": "String"
+    },
+    "AWS::IoT::Certificate::Id": {
+      "Type": "String"
+    }
+  },
+  "Resources": {
+    "certificate": {
+      "Properties": {
+        "CertificateId": {
+          "Ref": "AWS::IoT::Certificate::Id"
         },
-        "Type": "AWS::IoT::Certificate"
+        "Status": "Active"
       },
-      "policy": {
-        "Properties": {
-          "PolicyName": ""
-        },
-        "Type": "AWS::IoT::Policy"
+      "Type": "AWS::IoT::Certificate"
+    },
+    "policy": {
+      "Properties": {
+        "PolicyName": ""
       },
-      "thing": {
-        "OverrideSettings": {
-          "AttributePayload": "REPLACE",
-          "ThingGroups": "REPLACE",
-          "ThingTypeName": "REPLACE"
-        },
-        "Properties": {
-          "AttributePayload": {
-            "cert_issuance": {
-              "Ref": "CertDate"
-            }
-          },
-          "ThingGroups": [],
-          "ThingName": {
-            "Ref": "clientId"
+      "Type": "AWS::IoT::Policy"
+    },
+    "thing": {
+      "OverrideSettings": {
+        "AttributePayload": "REPLACE",
+        "ThingGroups": "REPLACE",
+        "ThingTypeName": "REPLACE"
+      },
+      "Properties": {
+        "AttributePayload": {
+          "cert_issuance": {
+            "Ref": "CertDate"
           }
         },
-        "Type": "AWS::IoT::Thing"
-      }
+        "ThingGroups": [],
+        "ThingName": {
+          "Ref": "DeviceSerial"
+        }
+      },
+      "Type": "AWS::IoT::Thing"
     }
   }
+}

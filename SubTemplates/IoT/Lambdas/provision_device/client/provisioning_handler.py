@@ -47,8 +47,9 @@ class ProvisioningHandler:
     
         # Sample Provisioning Template requests a serial number as a 
         # seed to generate Thing names in IoTCore. Simulating here.
-        self.unique_id = str(int(round(time.time() * 1000)))
-        
+        # self.unique_id = str(int(round(time.time() * 1000)))
+        # Keep ID something static for rotation purposes.
+        self.unique_id = "8675309"
 
         # ------------------------------------------------------------------------------
         #  -- PROVISIONING HOOKS EXAMPLE --
@@ -236,7 +237,7 @@ class ProvisioningHandler:
                 
 
 
-        register_template = {"certificateOwnershipToken": token, "parameters": {"clientId": serial}}
+        register_template = {"certificateOwnershipToken": token, "parameters": {"DeviceSerial": serial}}
         
         #Register thing / activate certificate
         self.primary_MQTTClient.publish("$aws/provisioning-templates/{}/provision/json".format(self.template_name), json.dumps(register_template), 0)
@@ -275,6 +276,6 @@ class ProvisioningHandler:
     def new_cert_pub_sub(self):
         """Method testing a call to the 'openworld' topic (which was specified in the policy for the new certificate)
         """
-        self.test_MQTTClient.subscribe("cmd/insite360/test/{}".format(self.unique_id), 1, self.basic_callback)
-        self.test_MQTTClient.publish("cmd/insite360/test/{}".format(self.unique_id), str({"service_response": "##### RESPONSE FROM PREVIOUSLY FORBIDDEN TOPIC #####"}), 0)
+        self.test_MQTTClient.subscribe("cmd/{}/alerts".format(self.unique_id), 1, self.basic_callback)
+        self.test_MQTTClient.publish("cmd/{}/alerts".format(self.unique_id), str({"service_response": "##### RESPONSE FROM PREVIOUSLY FORBIDDEN TOPIC #####"}), 0)
         

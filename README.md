@@ -5,13 +5,14 @@
 AWS IoT Core Fleet Provisioning provides all necessary tools to securely onboard IoT devices. This process includes establishing a unique identity for each device, registering each device within AWS IoT, and managing the device permissions. The image below is from [how-to-automate-onboarding-of-iot-devices-to-aws-iot-core-at-scale-with-fleet-provisioning](https://aws.amazon.com/blogs/iot/how-to-automate-onboarding-of-iot-devices-to-aws-iot-core-at-scale-with-fleet-provisioning/), which provides a detailed description of fleet provisioning. Provisioning by claim is a popular provisioning method that uses a bootstrap certificate (X.509 certificate and a private key) that can be included on edge devices during the manufacturing process. The edge device first connects to IoT Core using the bootstrap certificate to request production certificates that uniquely identify the device. At this point, the device uses the production certificates for future AWS IoT connections. For the first connection with the production certificates, IoT Core references a provisioning template to assign the correct permissions to the device. At this point, the device has full production permissions during communications with AWS IoT Core.
 
 
+
 ![Fleet Provisioning by Claim](Assets/fleet-provisioning-1.jpg)
 
 This repository includes AWS CloudFormation templates that fully automate the process of setting up fleet provisioning by claim. This removes the need to manually create and link AWS resources with the aim to provide a turnkey IoT device onboarding experience. This CloudFormation templates in this repo create: 
 
 1. All cloud infrastructure for fleet provisioning by claim
 2. A custom account-specific edge client that can be deployed on edge devices (prebaked with bootstrap certificates and your IoT endpoint)
-
+3. (**New**): The ability to manage and rotate certificates signed by an AWS Root CA with configurable timelines and graceperiods.
 
 ## Getting Started
 
@@ -49,6 +50,16 @@ Completing the cloud setup dynamically creates an edge client for your account i
 6. Run program ```python main.py```
 
 The client exchanges the bootstrap certificates for the production certificates with extended permissions. These certificates are then used for all future mqtt communication on topics containing the unique name assigned to this device (described in detail in fleet-provisioning components).
+
+### NEW! Cert Rotation 
+All things created in the AWS IoT registry will contain a *cert_issuance* attribute which will be the trigger for detecting certificates outside of the expiry date. A lambda trigger will run daily to detect expired certs and publish a message to each endpoint within the graceperiod of expiry. Your edge device must subscribe to this message and handle the published alert (arriving each day until compliance is met or certificate expires altogether). By executing the provided *run_provisioning* method (in main.py) and passing in run_provisioning(isRotation=True), the edge will perform a new cert rotation. The provisioning hook will validate if the cert_issuance date is indeed out of compliance and if so, issue a new certificate with an updated date (deactivating the old). The following illustrates a sample test workflow:
+
+1) Make sure to enable Fleet Index Settings (Thing Indexing) in IoT Core / Settings.
+2) Execute main.py from the edge to issue your initial production certs (from the bootstrap certs)
+3) From IoT Core, select Manage and click on your newly created thing, and modify the cert issuance date e.g. (20180630).
+4) In IoT Core, Go to the Test console and subscribe to all topics (#). Note the published message to the device to rotate.
+5) Back at the edge, modify the run_provisioning method by passing in (True) and re-run.
+6) Observe the swap in certificates, and the new date and cert association for the THING in IoTCore.
 
 ## Fleet-Provisioning Resources
 

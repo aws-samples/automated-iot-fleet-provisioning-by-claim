@@ -74,9 +74,7 @@ Resources:
       Environment:
         Variables:
           ENV: dev
-      VpcConfig:
-        SecurityGroupIds:
-        SubnetIds:
+
         
   FleetProvisioningHookPermission:
     Type: AWS::Lambda::Permission

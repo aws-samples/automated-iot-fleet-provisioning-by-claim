@@ -44,12 +44,14 @@ class ProvisioningHandler:
         self.claim_cert = self.config_parameters['CLAIM_CERT']
         self.secure_key = self.config_parameters['SECURE_KEY']
         self.root_cert = self.config_parameters['ROOT_CERT']
-    
-        # Sample Provisioning Template requests a serial number as a 
-        # seed to generate Thing names in IoTCore. Simulating here.
-        # self.unique_id = str(int(round(time.time() * 1000)))
-        # Keep ID something static for rotation purposes.
-        self.unique_id = "8675309"
+        self.machine_config = self.config_parameters['MACHINE_CONFIG_PATH']
+
+        with open(self.machine_config) as json_file:
+            data = json.load(json_file)
+            self.serial_num = data['serial_num']
+            self.model_type = data['model_type'] 
+        
+        self.unique_id = self.serial_num
 
         # ------------------------------------------------------------------------------
         #  -- PROVISIONING HOOKS EXAMPLE --

@@ -1,6 +1,10 @@
 import json
+from datetime import date
 
-provision_response = {'allowProvisioning': False}
+provision_response = {
+    'allowProvisioning': False,
+    "parameterOverrides": {"CertDate": date.today().strftime("%Y%m%d")}
+}
 
 
 def handler(event, context):

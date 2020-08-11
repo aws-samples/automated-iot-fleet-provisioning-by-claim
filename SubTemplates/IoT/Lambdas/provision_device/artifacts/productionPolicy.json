@@ -31,9 +31,9 @@
             "Resource": [
                 "arn:aws:iot:$REGION:$ACCOUNT:topicfilter/$aws/certificates/create/*",
                 "arn:aws:iot:$REGION:$ACCOUNT:topicfilter/$aws/provisioning-templates/$PROVTEMPLATE/provision/*",
-                "arn:aws:iot:$REGION:$ACCOUNT:topic/$aws/certificates/create/*",
-                "arn:aws:iot:$REGION:$ACCOUNT:topic/$aws/provisioning-templates/$PROVTEMPLATE/provision/*",
-                "arn:aws:iot:$REGION:$ACCOUNT:topic/*/${iot:Connection.Thing.ThingName}/*"
+                "arn:aws:iot:$REGION:$ACCOUNT:topicfilter/$aws/certificates/create/*",
+                "arn:aws:iot:$REGION:$ACCOUNT:topicfilter/$aws/provisioning-templates/$PROVTEMPLATE/provision/*",
+                "arn:aws:iot:$REGION:$ACCOUNT:topicfilter/*/${iot:Connection.Thing.ThingName}/*"
 
             ]
         }

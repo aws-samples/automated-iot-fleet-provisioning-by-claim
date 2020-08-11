@@ -26,7 +26,7 @@ def handler(event, context):
     # Future log Cloudwatch logs
     print("Received event: " + json.dumps(event, indent=2))
 
-    thing_name = event['parameters']['clientId']
+    thing_name = event['parameters']['DeviceSerial']
     response = client.describe_thing(
     thingName=thing_name)
  

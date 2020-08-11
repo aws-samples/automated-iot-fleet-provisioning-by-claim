@@ -25,13 +25,13 @@ These steps only need to be completed once per AWS account.
 3. Use the following command to install infrastructure into your account
 
 ```
-aws cloudFormation create-stack --region PUT-REGION-HERE --stack-name PUT-STACK-NAME-HERE --template-body file://pipeline.yaml --capabilities CAPABILITY_NAMED_IAM --parameters ParameterKey=CodeRepositoryName,ParameterValue=PUT-REPO-NAME-HERE ParameterKey=CodeRepositoryBranch,ParameterValue=PUT-BRANCH-HERE ParameterKey=ResourceTag,ParameterValue=PUT-RESOURCE-TAG-HERE --profile PUT_PROFILE_HERE
+aws cloudformation create-stack --region PUT-REGION-HERE --stack-name PUT-STACK-NAME-HERE --template-body file://pipeline.yaml --capabilities CAPABILITY_NAMED_IAM --parameters ParameterKey=CodeRepositoryName,ParameterValue=PUT-REPO-NAME-HERE ParameterKey=CodeRepositoryBranch,ParameterValue=PUT-BRANCH-HERE ParameterKey=ResourceTag,ParameterValue=PUT-RESOURCE-TAG-HERE --profile PUT_PROFILE_HERE
 ```
 
 Example
 
 ```
-aws cloudFormation create-stack --region us-east-1 --stack-name pipeline --template-body file://pipeline.yaml --capabilities CAPABILITY_NAMED_IAM --parameters ParameterKey=CodeRepositoryName,ParameterValue=fleet ParameterKey=CodeRepositoryBranch,ParameterValue=master ParameterKey=ResourceTag,ParameterValue=fleetprov --profile default
+aws cloudformation create-stack --region us-east-1 --stack-name pipeline --template-body file://pipeline.yaml --capabilities CAPABILITY_NAMED_IAM --parameters ParameterKey=CodeRepositoryName,ParameterValue=fleet ParameterKey=CodeRepositoryBranch,ParameterValue=master ParameterKey=ResourceTag,ParameterValue=fleetprov --profile default
 ```
 
 This template will dynamically create an edge client and bootstrap certificates for your account. These resources are uploaded to an Amazon S3 bucket named {ResourceTag}-{rootstackId}-bootstrapcerts-{stackId}. The full name of the S3 bucket as also provided as an output of the root stack.
@@ -56,7 +56,7 @@ All things created in the AWS IoT registry will contain a *cert_issuance* attrib
 
 1) Make sure to enable Fleet Index Settings (Thing Indexing) in IoT Core / Settings.
 2) Execute main.py from the edge to issue your initial production certs (from the bootstrap certs)
-3) From IoT Core, select Manage and click on your newly created thing, and modify the cert issuance date e.g. (20180630).
+3) From IoT Core, select Manage and click on your newly created thing, and modify the cert issuance date e.g. (20180630). yyyymmdd
 4) In IoT Core, Go to the Test console and subscribe to all topics (#). Note the published message to the device to rotate.
 5) Back at the edge, modify the run_provisioning method by passing in (True) and re-run.
 6) Observe the swap in certificates, and the new date and cert association for the THING in IoTCore.

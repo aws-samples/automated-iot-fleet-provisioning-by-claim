@@ -2,15 +2,14 @@ AWSTemplateFormatVersion: 2010-09-09
 Parameters:
   CodeRepositoryName:
     Type: String
-    Default: fb-oenoflow-ota
+    Default: fleet-provisioing
   CodeRepositoryBranch:
     Type: String
     Default: master
   ResourceTag:
     Type: String
-    Default: gsp-fb-oenoflow-ota
+    Default: fleet-prov
   
-
 Resources:
   CodePipeline:
     Type: AWS::CodePipeline::Pipeline

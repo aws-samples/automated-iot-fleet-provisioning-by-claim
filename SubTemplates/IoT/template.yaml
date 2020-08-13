@@ -22,13 +22,14 @@ Resources:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
               SSEAlgorithm: AES256
+
   FleetProvisioningFunction:
     Type: AWS::Serverless::Function
     Properties:
       Description: Sets up fleet provisioning
       CodeUri: Lambdas/provision_device/
       Handler: app.handler
-      Timeout: 240
+      Timeout: 360
       MemorySize: 3008
       Environment:
         Variables:
@@ -36,11 +37,12 @@ Resources:
           Account: !Ref AWS::AccountId
           Region: !Ref AWS::Region
           RegistrationRoleArn: !Sub ${ThingsRegistrationRole.Arn}
-          LambdaHookArn: !Sub ${FleetProvisioningHookFunction.Arn}
+          ProdLambdaHookArn: !Sub ${FleetProvisioningHookFunction.Arn}
+          RotateLambdaHookArn: !Sub ${CertRotationHookFunction.Arn}
       Policies:
         - AWSLambdaBasicExecutionRole
         - AdministratorAccess
-  
+
   FleetProvisioningCustom:
     Type: Custom::FleetProvisioning
     Properties:
@@ -69,7 +71,11 @@ Resources:
       Timeout: 10
       Policies:
         - AWSLambdaBasicExecutionRole
-  
+      Environment:
+        Variables:
+          ENV: dev
+
+        
   FleetProvisioningHookPermission:
     Type: AWS::Lambda::Permission
     Properties:
@@ -77,7 +83,98 @@ Resources:
       Principal: iot.amazonaws.com
       FunctionName: !Ref FleetProvisioningHookFunction
       SourceAccount: !Ref AWS::AccountId
-
+  
+  CertMonitorFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Description: Lambda to monitor expired certs
+      CodeUri: Lambdas/cert_rotation_monitor/
+      Handler: app.handler
+      Timeout: 10
+      Events:
+        CheckCertExpiryEvent:
+          Type: Schedule
+          Properties:
+            Schedule: rate(1 minute)  
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action:
+              - cloudwatch:PutMetricData
+              - iot:Receive
+              - logs:CreateLogStream
+              - logs:CreateLogGroup
+              - iot:DescribeThing
+              - iot:SearchIndex
+              - iot:ListThingsInThingGroup
+              - iot:ListThingPrincipals
+              - iot:DescribeCertificate
+              - iot:UpdateCertificate
+              - iot:DetachThingPrincipal
+              - iot:PutLogEvents
+              - iot:Publish
+              Resource: "*"    
+  CertRotationHookFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Description: Lambda to manage provisioning of rotating certs
+      CodeUri: Lambdas/cert_rotation_hook/
+      Handler: app.handler
+      Timeout: 10
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action:
+              - cloudwatch:PutMetricData
+              - iot:Receive
+              - logs:CreateLogStream
+              - logs:CreateLogGroup
+              - iot:DescribeThing
+              - iot:SearchIndex
+              - iot:ListThingsInThingGroup
+              - iot:ListThingPrincipals
+              - iot:DescribeCertificate
+              - iot:UpdateCertificate
+              - iot:DetachThingPrincipal
+              - iot:PutLogEvents
+              - iot:Publish
+              Resource: "*"    
+               
+  CertRotationHookPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      Principal: iot.amazonaws.com
+      FunctionName: !Ref CertRotationHookFunction
+      SourceAccount: !Ref AWS::AccountId
+  
+  BootstrapGeneratorFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Description: Creates bootstraps for each model type presented
+      CodeUri: Lambdas/bootstrap_generator/
+      Handler: app.handler
+      Timeout: 360
+      MemorySize: 3008
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action:
+              - cloudwatch:PutMetricData
+              - iot:CreateKeysAndCertificate
+              - iot:AttachPolicy
+              - logs:CreateLogStream
+              - logs:CreateLogGroup
+              - iot:ListThingPrincipals
+              - iot:DescribeCertificate
+              - iot:PutLogEvents
+              Resource: "*"    
 Outputs:
   BootstrapBucket:
     Description: 'Bucket with bootstrap certificates' 

@@ -202,7 +202,7 @@ def createModelBootstraps():
     model_bucket = '{}-per-vendor-bootstraps'.format(resourceTag)
     
     with open('artifacts/models.txt', 'r') as rows:
-        s3Client.create_bucket(Bucket=model_bucket)
+        s3Client.create_bucket(Bucket=model_bucket, CreateBucketConfiguration={'LocationConstraint': region})
         models = rows.read().splitlines()
         rootCert = urlopen(rootCertUrl)
         

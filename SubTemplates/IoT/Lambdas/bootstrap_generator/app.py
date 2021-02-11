@@ -13,13 +13,14 @@ endpoint = boto3.client('iot-data')
 s3Client = boto3.client('s3')
 
 resourceTag = os.environ['ResourceTag']
+region = os.environ['Region']
 
 bootstrapPolicyName = '{}_birth_policy'.format(resourceTag)
 BUCKET_NAME = '{}-per-vendor-bootstraps'.format(resourceTag)
 rootCertUrl = "https://www.amazontrust.com/repository/AmazonRootCA1.pem"
 rootCert = urlopen(rootCertUrl)
 
-s3Client.create_bucket(Bucket=BUCKET_NAME)
+s3Client.create_bucket(Bucket=BUCKET_NAME, CreateBucketConfiguration={'LocationConstraint': region})
 
 def handler(event, context):
     

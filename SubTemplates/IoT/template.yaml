@@ -160,6 +160,9 @@ Resources:
       Handler: app.handler
       Timeout: 360
       MemorySize: 3008
+      Environment:
+        Variables:
+          Region: !Ref AWS::Region
       Policies:
         - AWSLambdaBasicExecutionRole
         - Version: "2012-10-17"

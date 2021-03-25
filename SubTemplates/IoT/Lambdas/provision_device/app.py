@@ -202,7 +202,16 @@ def createModelBootstraps():
     model_bucket = '{}-per-vendor-bootstraps'.format(resourceTag)
     
     with open('artifacts/models.txt', 'r') as rows:
-        s3Client.create_bucket(Bucket=model_bucket, CreateBucketConfiguration={'LocationConstraint': region})
+        create_bucket_params = dict(Bucket=model_bucket)
+        # FIXME: location constraint for us-east-1 causes the bucket creation to fail
+        """
+        As per http://docs.aws.amazon.com/AmazonS3/latest/API/RESTBucketPUT.html: 
+        "If you are creating a bucket on the US East (N. Virginia) region (us-east-1),
+        you do not need to specify the location constraint". Other regions work fine"
+        """
+        if region != 'us-east-1':
+            create_bucket_params['CreateBucketConfiguration'] = {'LocationConstraint': region}
+        s3Client.create_bucket(create_bucket_params)
         models = rows.read().splitlines()
         rootCert = urlopen(rootCertUrl)
         

@@ -211,7 +211,7 @@ def createModelBootstraps():
         """
         if region != 'us-east-1':
             create_bucket_params['CreateBucketConfiguration'] = {'LocationConstraint': region}
-        s3Client.create_bucket(create_bucket_params)
+        s3Client.create_bucket(**create_bucket_params)
         models = rows.read().splitlines()
         rootCert = urlopen(rootCertUrl)
         
